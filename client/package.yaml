@@ -3,6 +3,15 @@ name: patches-client
 executables:
   patches-client:
     main: Main.hs
+    source-dirs:
+      - ./.
+      - ../common
     dependencies:
       - base
       - reflex-dom
+      - patches-vector
+      - vector
+      - string-conversions
+      - aeson
+      - servant >= 0.5
+      - containers

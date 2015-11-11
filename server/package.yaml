@@ -4,10 +4,18 @@ executables:
   patches-server:
     main: Main.hs
     source-dirs:
-      - .
+      - ./.
+      - ../common
     dependencies:
       - base
       - wai
       - wai-shake
       - warp
       - logging-facade
+      - servant >= 0.5
+      - servant-server >= 0.5
+      - patches-vector
+      - aeson
+      - either
+      - transformers
+      - vector

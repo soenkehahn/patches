@@ -1,23 +1,48 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
 
+import           Control.Concurrent
+import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Except
+import           Data.Patch
+import           Data.Vector (Vector, toList)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Shake.Ghcjs
+import           Servant hiding (Patch)
 import qualified System.Logging.Facade as Log
+
+import           Api
 
 main :: IO ()
 main = do
-  app <- serveGhcjs $ BuildConfig {
-    mainFile = "Main.hs",
-    sourceDirs = [],
-    projectDir = "../client",
-    projectExec = Stack
-  }
   let port = 8080
       settings =
         setPort port $
         setBeforeMainLoop (Log.info ("listening on port " ++ show port))
         defaultSettings
-  runSettings settings app
+  runSettings settings =<< mkApp
+
+mkApp :: IO Application
+mkApp = do
+  jsIndexApp <- serveGhcjs $ BuildConfig {
+    mainFile = "Main.hs",
+    sourceDirs = [".", "../common"],
+    projectDir = "../client",
+    projectExec = Stack
+  }
+  mvar <- newMVar mempty
+  return $ \ request respond -> do
+    Log.info $ show request
+    (serve patchesApi (api mvar :<|> jsIndexApp)) request respond
+
+api :: MVar (Vector Char) -> [Edit Char] -> ExceptT ServantErr IO Message
+api mvar edits = liftIO $ modifyMVar mvar $ \ document -> do
+  let patch = unsafeFromList edits
+      newDocument = apply patch document
+  liftIO $ Log.info $ show patch
+  liftIO $ Log.info $ show newDocument
+  return (newDocument, Success $ Data.Vector.toList newDocument)

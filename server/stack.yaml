@@ -5,6 +5,14 @@ packages:
       git: https://github.com/soenkehahn/wai-shake
       commit: 57947ab4a61e7d4790e2168bc5c9c16b47b5ca59
     extra-dep: true
-extra-deps: []
+  - location:
+      git: https://github.com/haskell-servant/servant
+      commit: fdd1829c8fc43cdc92b28b6ef2854452ceb5e16c
+    subdirs:
+      - servant
+      - servant-server
+    extra-dep: true
+extra-deps:
+  - http-api-data-0.1.1.1
 flags: {}
 extra-package-dbs: []

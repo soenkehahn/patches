@@ -10,11 +10,21 @@ cabal-version:  >= 1.10
 executable patches-server
   main-is: Main.hs
   hs-source-dirs:
-      .
+      ./.
+    , ../common
   build-depends:
       base
     , wai
     , wai-shake
     , warp
     , logging-facade
+    , servant >= 0.5
+    , servant-server >= 0.5
+    , patches-vector
+    , aeson
+    , either
+    , transformers
+    , vector
+  other-modules:
+      Api
   default-language: Haskell2010
