@@ -1,0 +1,8 @@
+name: patches-client
+
+executables:
+  patches-client:
+    main: Main.hs
+    dependencies:
+      - base
+      - reflex-dom

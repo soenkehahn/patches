@@ -1,0 +1,13 @@
+name: patches-server
+
+executables:
+  patches-server:
+    main: Main.hs
+    source-dirs:
+      - .
+    dependencies:
+      - base
+      - wai
+      - wai-shake
+      - warp
+      - logging-facade
