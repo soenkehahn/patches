@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 
 import           Control.Concurrent
@@ -28,22 +29,24 @@ data Options
 
 main :: IO ()
 main = withCli $ \ options -> do
-  print (options :: Options)
   let port = 8080
       settings =
         setPort port $
         setBeforeMainLoop (Log.info ("listening on port " ++ show port))
         defaultSettings
-  runSettings settings =<< mkApp
+      env = if production options
+        then Production
+        else Development
+  runSettings settings =<< mkApp env
 
-mkApp :: IO Application
-mkApp = do
-  jsIndexApp <- serveGhcjs $ BuildConfig {
+mkApp :: Environment -> IO Application
+mkApp env = do
+  jsIndexApp <- $(serveGhcjs $ BuildConfig {
     mainFile = "Main.hs",
     sourceDirs = [".", "../src"],
     projectDir = "client",
     projectExec = Stack
-  }
+  }) env
   mvar <- newMVar mempty
   return $ \ request respond -> do
     Log.info $ show request
