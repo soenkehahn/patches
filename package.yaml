@@ -1,11 +1,8 @@
-name: patches-server
-
 executables:
-  patches-server:
+  patches:
     main: Main.hs
     source-dirs:
-      - ./.
-      - ../common
+      - src
     dependencies:
       - base
       - wai
@@ -14,6 +11,7 @@ executables:
       - logging-facade
       - servant >= 0.5
       - servant-server >= 0.5
+      - getopt-generics
       - patches-vector
       - aeson
       - either

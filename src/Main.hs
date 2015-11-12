@@ -1,4 +1,6 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -14,11 +16,19 @@ import           Network.Wai.Handler.Warp
 import           Network.Wai.Shake.Ghcjs
 import           Servant hiding (Patch)
 import qualified System.Logging.Facade as Log
+import           WithCli
 
 import           Api
 
+data Options
+  = Options {
+    production :: Bool
+  }
+  deriving (Show, Generic, HasArguments)
+
 main :: IO ()
-main = do
+main = withCli $ \ options -> do
+  print (options :: Options)
   let port = 8080
       settings =
         setPort port $
@@ -30,8 +40,8 @@ mkApp :: IO Application
 mkApp = do
   jsIndexApp <- serveGhcjs $ BuildConfig {
     mainFile = "Main.hs",
-    sourceDirs = [".", "../common"],
-    projectDir = "../client",
+    sourceDirs = [".", "../src"],
+    projectDir = "client",
     projectExec = Stack
   }
   mvar <- newMVar mempty

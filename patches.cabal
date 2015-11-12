@@ -2,16 +2,15 @@
 --
 -- see: https://github.com/sol/hpack
 
-name:           patches-server
+name:           patches
 version:        0.0.0
 build-type:     Simple
 cabal-version:  >= 1.10
 
-executable patches-server
+executable patches
   main-is: Main.hs
   hs-source-dirs:
-      ./.
-    , ../common
+      src
   build-depends:
       base
     , wai
@@ -20,6 +19,7 @@ executable patches-server
     , logging-facade
     , servant >= 0.5
     , servant-server >= 0.5
+    , getopt-generics
     , patches-vector
     , aeson
     , either

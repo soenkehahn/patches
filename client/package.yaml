@@ -5,7 +5,7 @@ executables:
     main: Main.hs
     source-dirs:
       - ./.
-      - ../common
+      - ../src
     dependencies:
       - base
       - reflex-dom

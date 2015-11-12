@@ -11,7 +11,7 @@ executable patches-client
   main-is: Main.hs
   hs-source-dirs:
       ./.
-    , ../common
+    , ../src
   build-depends:
       base
     , reflex-dom
