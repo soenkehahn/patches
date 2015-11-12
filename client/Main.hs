@@ -31,7 +31,7 @@ main = do
 debug :: (Show a, MonadWidget t m) => Event t a -> m ()
 debug a = do
   dyn <- holdDyn "" (fmap show a)
-  el "p" $ dynText dyn
+  el "p" $ el "pre" $ dynText dyn
 
 pText :: MonadWidget t m => Dynamic t String -> m ()
 pText dyn = el "p" $ dynText dyn
