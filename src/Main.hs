@@ -23,16 +23,17 @@ import           Api
 
 data Options
   = Options {
-    production :: Bool
+    production :: Bool,
+    port :: Int
   }
   deriving (Show, Generic, HasArguments)
 
 main :: IO ()
 main = withCli $ \ options -> do
-  let port = 8080
-      settings =
-        setPort port $
-        setBeforeMainLoop (Log.info ("listening on port " ++ show port))
+  let settings =
+        setPort (port options) $
+        setBeforeMainLoop
+          (Log.info ("listening on port " ++ show (port options)))
         defaultSettings
       env = if production options
         then Production
