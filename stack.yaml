@@ -1,9 +1,9 @@
 resolver: nightly-2015-11-11
 packages:
   - '.'
-  - location:
+  - location: # ../../src/wai-shake
       git: https://github.com/soenkehahn/wai-shake
-      commit: 2e8ce4db7289a79cddf43dbc3de0f927433968e5
+      commit: d00ffd7
     extra-dep: true
   - location:
       git: https://github.com/haskell-servant/servant

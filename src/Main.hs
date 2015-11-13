@@ -46,17 +46,15 @@ mkApp env = do
     mainFile = "Main.hs",
     sourceDirs = [".", "../src"],
     projectDir = "client",
-    projectExec = Stack
+    projectExec = Stack,
+    buildDir = "js-builds"
   }) env
   mvar <- newMVar mempty
   return $ \ request respond -> do
-    Log.info $ show request
     (serve patchesApi (api mvar :<|> jsIndexApp)) request respond
 
 api :: MVar (Vector Char) -> [Edit Char] -> ExceptT ServantErr IO Message
 api mvar edits = liftIO $ modifyMVar mvar $ \ document -> do
   let patch = unsafeFromList edits
       newDocument = apply patch document
-  liftIO $ Log.info $ show patch
-  liftIO $ Log.info $ show newDocument
   return (newDocument, Success $ Data.Vector.toList newDocument)
