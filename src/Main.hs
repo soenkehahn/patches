@@ -8,10 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 import           Control.Concurrent
-import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Except
-import           Data.Patch
-import           Data.Vector (Vector, toList)
+import           Network.HTTP.Types
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Shake.Ghcjs
@@ -49,12 +46,10 @@ mkApp env = do
     projectExec = Stack,
     buildDir = "js-builds"
   }) env
-  mvar <- newMVar mempty
   return $ \ request respond -> do
-    (serve patchesApi (api mvar :<|> jsIndexApp)) request respond
+    (serve patchesApi (api :<|> jsIndexApp)) request respond
 
-api :: MVar (Vector Char) -> [Edit Char] -> ExceptT ServantErr IO Message
-api mvar edits = liftIO $ modifyMVar mvar $ \ document -> do
-  let patch = unsafeFromList edits
-      newDocument = apply patch document
-  return (newDocument, Success $ Data.Vector.toList newDocument)
+api :: Application
+api _request respond = do
+  threadDelay 1000000
+  respond $ responseLBS ok200 [] "ok"

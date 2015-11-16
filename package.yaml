@@ -1,3 +1,5 @@
+ghc-options: -Wall
+
 executables:
   patches:
     main: Main.hs
@@ -12,8 +14,4 @@ executables:
       - servant >= 0.5
       - servant-server >= 0.5
       - getopt-generics
-      - patches-vector
-      - aeson
-      - either
-      - transformers
-      - vector
+      - http-types

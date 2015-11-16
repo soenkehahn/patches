@@ -9,9 +9,5 @@ executables:
     dependencies:
       - base
       - reflex-dom
-      - patches-vector
-      - vector
       - string-conversions
-      - aeson
       - servant >= 0.5
-      - containers
