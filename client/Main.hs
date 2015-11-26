@@ -1,63 +1,75 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
-{-# OPTIONS_GHC -Wall -Werror -fno-warn-name-shadowing #-}
+{- OPTIONS_GHC -Wall -Werror -fno-warn-name-shadowing #-}
 
 module Main where
 
-import           Data.Aeson
-import           Data.Map (insert)
+import           Control.Concurrent
+import           Control.DeepSeq
+import           Control.Monad
+import           Control.Monad.Trans.Except
 import           Data.Patch
-import           Data.String.Conversions
+import           Data.String
+import           Data.Vector (Vector)
 import qualified Data.Vector as V
-import           Reflex.Dom
+import           GHC.Generics
+import           Network.HTTP.Client
+import           React.Flux
+import           Servant.API hiding (Patch)
+import           Servant.Client
 
-import           Api ()
+import           Api
 
 main :: IO ()
 main = do
-  mainWidget $ el "div" $ do
-    value <- _textArea_input <$> textArea def
-    el "p" $ do
-      debug value
-      both <- diffOldNew "" value
-      debug both
-      let patches = fmap (uncurry mkDiff) both
-      debug patches
-      let requests = fmap mkRequest patches
-      debug requests
-      answers <- performRequestAsync requests
-      debug answers
+  store <- initStore
+  reactRender "mainDocument" (intView store) ()
 
-debug :: (Show a, MonadWidget t m) => Event t a -> m ()
-debug a = do
-  dyn <- holdDyn "" (fmap show a)
-  el "p" $ el "pre" $ dynText dyn
+-- * store
 
-pText :: MonadWidget t m => Dynamic t String -> m ()
-pText dyn = el "p" $ dynText dyn
+data Store
+  = Store {
+    manager :: Manager,
+    text :: Vector Char,
+    lastPatch :: Maybe (Patch Char)
+  }
 
-diffOldNew :: MonadWidget t m => a -> Event t a -> m (Event t (a, a))
-diffOldNew initial input = do
-  dyn <- foldDyn acc [initial] input
-  return $ fmapMaybe tuple $ updated dyn
-  where
-    acc :: a -> [a] -> [a]
-    acc new l = case l of
-      [] -> [new]
-      [old] -> [old, new]
-      (_ : old : _) -> [old, new]
+initStore :: IO (ReactStore Store)
+initStore = do
+  manager <- newManager defaultManagerSettings
+  return $ mkStore $ Store manager (V.fromList "") Nothing
 
-    tuple :: [a] -> Maybe (a, a)
-    tuple = \ case
-      [old, new] -> Just (old, new)
-      _ -> Nothing
+-- * actions
 
-mkDiff :: String -> String -> Patch Char
-mkDiff a b = diff (V.fromList a) (V.fromList b)
+data Action
+  = SetText String
+  deriving (Generic)
 
-mkRequest :: Patch Char -> XhrRequest
-mkRequest patch = xhrRequest "POST" "/api/patch" def {
-  _xhrRequestConfig_sendData = Just (cs (encode (toList patch))),
-  _xhrRequestConfig_headers = insert "Content-Type" "application/json;charset=UTF-8"
-    (_xhrRequestConfig_headers def)
-}
+instance NFData Action
+
+instance StoreData Store where
+  type StoreAction Store = Action
+  transform action (Store manager old _) = case action of
+    SetText (V.fromList -> new) -> do
+      let sendPatch :<|> _ = client patchesApi (BaseUrl Http "localhost" 8080 "") manager
+      let patch = diff old new
+      forkIO $ do
+        reply <- runExceptT $ sendPatch (42, toList patch)
+        print reply
+      return $ Store manager new (Just patch)
+
+-- * view
+
+intView :: ReactStore Store -> ReactView ()
+intView store = defineControllerView "text" store $ \ (Store _ text mPatch) () -> do
+  textarea_ (
+    "value" @= (V.toList text :: String) :
+    onChange (\ event -> [SomeStoreAction store (SetText (target event "value"))]) :
+    []) mempty
+  p_ $ text_ $ fromString $ show text
+  p_ $ pre_ $ fromString $ show mPatch

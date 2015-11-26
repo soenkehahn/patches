@@ -8,10 +8,15 @@ executables:
       - ../src
     dependencies:
       - base
-      - reflex-dom
+      - transformers
+      - http-client
       - patches-vector
       - vector
       - string-conversions
       - aeson
       - servant >= 0.5
+      - servant-client >= 0.5
       - containers
+      - react-flux
+      - ghcjs-base
+      - deepseq

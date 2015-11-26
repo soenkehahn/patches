@@ -44,6 +44,7 @@ mkApp :: Environment -> IO Application
 mkApp env = do
   jsIndexApp <- $(serveGhcjs $ BuildConfig {
     mainFile = "Main.hs",
+    customIndexFile = Just "index.html",
     sourceDirs = [".", "../src"],
     projectDir = "client",
     projectExec = Stack,
@@ -53,8 +54,8 @@ mkApp env = do
   return $ \ request respond -> do
     (serve patchesApi (api mvar :<|> jsIndexApp)) request respond
 
-api :: MVar (Vector Char) -> [Edit Char] -> ExceptT ServantErr IO Message
-api mvar edits = liftIO $ modifyMVar mvar $ \ document -> do
+api :: MVar (Vector Char) -> (Int, [Edit Char]) -> ExceptT ServantErr IO Message
+api mvar (n, edits) = liftIO $ modifyMVar mvar $ \ document -> do
   let patch = unsafeFromList edits
       newDocument = apply patch document
-  return (newDocument, Success $ Data.Vector.toList newDocument)
+  return (newDocument, Success ("from the server: " ++ Data.Vector.toList newDocument ++ show n))

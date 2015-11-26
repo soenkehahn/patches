@@ -1,18 +1,17 @@
 resolver: nightly-2015-11-11
 packages:
   - '.'
-  - location: # ../../src/wai-shake
-      git: https://github.com/soenkehahn/wai-shake
-      commit: d00ffd7
+  - location: /home/shahn/src/wai-shake
+      # git: https://github.com/soenkehahn/wai-shake
+      # commit: d00ffd7
     extra-dep: true
-  - location:
-      git: https://github.com/haskell-servant/servant
-      commit: fdd1829c8fc43cdc92b28b6ef2854452ceb5e16c
+  - location: /home/shahn/src/servant
+      # git: https://github.com/haskell-servant/servant
+      # commit: fdd1829c8fc43cdc92b28b6ef2854452ceb5e16c
     subdirs:
       - servant
       - servant-server
     extra-dep: true
 extra-deps:
   - http-api-data-0.1.1.1
-flags: {}
-extra-package-dbs: []
+  - patches-vectors-0.1.5.0
