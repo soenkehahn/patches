@@ -11,7 +11,7 @@ import           Control.Concurrent
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Except
 import           Data.Patch
-import           Data.Vector (Vector, toList)
+import           Data.Vector as V (Vector, toList)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Shake.Ghcjs
@@ -53,13 +53,18 @@ mkApp env = do
   mvar <- newMVar mempty
   let server :: Server PatchesApi
       server =
-        logic mvar :<|>
+        (document mvar :<|>
+         patch mvar) :<|>
         jsIndexApp
   return $ serve patchesApi server
 
+type DB = MVar (Vector Char)
 
-logic :: MVar (Vector Char) -> (Int, [Edit Char]) -> ExceptT ServantErr IO Message
-logic mvar (n, edits) = liftIO $ modifyMVar mvar $ \ document -> do
+document :: DB -> ExceptT ServantErr IO String
+document mvar = liftIO $ (V.toList <$> readMVar mvar)
+
+patch :: DB -> [Edit Char] -> ExceptT ServantErr IO Message
+patch mvar edits = liftIO $ modifyMVar mvar $ \ document -> do
   let patch = unsafeFromList edits
       newDocument = apply patch document
-  return (newDocument, Success ("from the server: " ++ Data.Vector.toList newDocument ++ show n))
+  return (newDocument, Success $ V.toList newDocument)

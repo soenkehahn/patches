@@ -11,6 +11,7 @@ module Main where
 
 import           Control.Concurrent
 import           Control.DeepSeq
+import           Control.Exception hiding (try)
 import           Control.Monad
 import           Control.Monad.Trans.Except
 import           Data.Patch
@@ -25,27 +26,11 @@ import           React.Flux
 import           Safe
 import           Servant.API hiding (Patch)
 import           Servant.Client
+import           System.IO.Unsafe
 
 import           Api
 
-main :: IO ()
-main = do
-  store <- initStore
-  reactRender "mainDocument" (intView store) ()
-
--- * store
-
-data Store
-  = Store {
-    manager :: Manager,
-    text :: Vector Char,
-    lastPatch :: Maybe (Patch Char)
-  }
-
-initStore :: IO (ReactStore Store)
-initStore = do
-  manager <- newManager defaultManagerSettings
-  return $ mkStore $ Store manager (V.fromList "") Nothing
+-- * api calls
 
 sameOriginBaseUrl :: String -> IO BaseUrl
 sameOriginBaseUrl path = do
@@ -65,6 +50,39 @@ sameOriginBaseUrl path = do
 foreign import javascript unsafe "(function () { return location; })()"
   js_location :: IO Object
 
+(getDocument :<|> sendPatch) :<|> _ = unsafePerformIO $ do
+  baseUrl <- sameOriginBaseUrl ""
+  return $ client patchesApi baseUrl (error "manager")
+
+-- * main
+
+main :: IO ()
+main = do
+  store <- initStore
+  reactRender "mainDocument" (intView store) ()
+
+-- * store
+
+data Store
+  = Store {
+    manager :: Manager,
+    text :: Vector Char,
+    lastPatch :: Maybe (Patch Char)
+  }
+
+initStore :: IO (ReactStore Store)
+initStore = do
+  manager <- newManager defaultManagerSettings
+  doc <- try $ getDocument
+  return $ mkStore $ Store manager (V.fromList doc) Nothing
+
+try :: ExceptT ServantError IO a -> IO a
+try action = do
+  r <- runExceptT action
+  case r of
+    Left err -> throwIO (ErrorCall (show err))
+    Right a -> return a
+
 -- * actions
 
 data Action
@@ -77,11 +95,9 @@ instance StoreData Store where
   type StoreAction Store = Action
   transform action (Store manager old _) = case action of
     SetText (V.fromList -> new) -> do
-      baseUrl <- sameOriginBaseUrl ""
-      let sendPatch :<|> _ = client patchesApi baseUrl manager
       let patch = diff old new
       forkIO $ do
-        reply <- runExceptT $ sendPatch (42, toList patch)
+        reply <- runExceptT $ sendPatch (toList patch)
         print reply
       return $ Store manager new (Just patch)
 
