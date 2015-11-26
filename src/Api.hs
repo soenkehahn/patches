@@ -16,8 +16,8 @@ import           GHC.Generics
 import           Servant.API
 
 type PatchesApi =
-       "api" :> "patch" :> ReqBody '[JSON] (Int, [Edit Char]) :> Post '[JSON] Message
-  :<|> Raw
+  "api" :> "patch" :> ReqBody '[JSON] (Int, [Edit Char]) :> Post '[JSON] Message :<|>
+  Raw
 
 patchesApi :: Proxy PatchesApi
 patchesApi = Proxy

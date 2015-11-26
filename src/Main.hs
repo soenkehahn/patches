@@ -51,11 +51,15 @@ mkApp env = do
     buildDir = "js-builds"
   }) env
   mvar <- newMVar mempty
-  return $ \ request respond -> do
-    (serve patchesApi (api mvar :<|> jsIndexApp)) request respond
+  let server :: Server PatchesApi
+      server =
+        logic mvar :<|>
+        jsIndexApp
+  return $ serve patchesApi server
 
-api :: MVar (Vector Char) -> (Int, [Edit Char]) -> ExceptT ServantErr IO Message
-api mvar (n, edits) = liftIO $ modifyMVar mvar $ \ document -> do
+
+logic :: MVar (Vector Char) -> (Int, [Edit Char]) -> ExceptT ServantErr IO Message
+logic mvar (n, edits) = liftIO $ modifyMVar mvar $ \ document -> do
   let patch = unsafeFromList edits
       newDocument = apply patch document
   return (newDocument, Success ("from the server: " ++ Data.Vector.toList newDocument ++ show n))

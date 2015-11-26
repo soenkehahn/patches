@@ -1,4 +1,9 @@
-server: js
+build: js server
+
+clean:
+	rm -rf js-builds
+
+server:
 	stack setup
 	stack build
 
