@@ -19,4 +19,6 @@ executables:
       - containers
       - react-flux
       - ghcjs-base
+      - ghcjs-prim
+      - safe
       - deepseq
