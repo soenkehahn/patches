@@ -56,7 +56,7 @@ instance StoreData Store where
   type StoreAction Store = Action
   transform action (Store manager old _) = case action of
     SetText (V.fromList -> new) -> do
-      let sendPatch :<|> _ = client patchesApi (BaseUrl Http "localhost" 8080 "") manager
+      let sendPatch :<|> _ = client patchesApi (BaseUrl Http "52.32.214.75" 8080 "") manager
       let patch = diff old new
       forkIO $ do
         reply <- runExceptT $ sendPatch (42, toList patch)
