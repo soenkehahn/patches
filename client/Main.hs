@@ -18,8 +18,11 @@ import           Data.String
 import           Data.Vector (Vector)
 import qualified Data.Vector as V
 import           GHC.Generics
+import           GHCJS.Prim (fromJSString, fromJSInt)
+import           JavaScript.Object
 import           Network.HTTP.Client
 import           React.Flux
+import           Safe
 import           Servant.API hiding (Patch)
 import           Servant.Client
 
@@ -44,6 +47,24 @@ initStore = do
   manager <- newManager defaultManagerSettings
   return $ mkStore $ Store manager (V.fromList "") Nothing
 
+sameOriginBaseUrl :: String -> IO BaseUrl
+sameOriginBaseUrl path = do
+  location <- js_location
+  js_protocol <- fromJSString <$> getProp "protocol" location
+  let protocol = case js_protocol of
+        "http:" -> Http
+        "https:" -> Https
+        _ -> error ("unparseable protocol: " ++ js_protocol)
+  host <- fromJSString <$> getProp "hostname" location
+  js_port <- fromJSString <$> getProp "port" location
+  let port = case readMay js_port of
+        Just p -> p
+        Nothing -> error ("unparseable port: " ++ js_port)
+  return $ BaseUrl protocol host port path
+
+foreign import javascript unsafe "(function () { return location; })()"
+  js_location :: IO Object
+
 -- * actions
 
 data Action
@@ -56,7 +77,8 @@ instance StoreData Store where
   type StoreAction Store = Action
   transform action (Store manager old _) = case action of
     SetText (V.fromList -> new) -> do
-      let sendPatch :<|> _ = client patchesApi (BaseUrl Http "52.32.214.75" 80 "") manager
+      baseUrl <- sameOriginBaseUrl ""
+      let sendPatch :<|> _ = client patchesApi baseUrl manager
       let patch = diff old new
       forkIO $ do
         reply <- runExceptT $ sendPatch (42, toList patch)
