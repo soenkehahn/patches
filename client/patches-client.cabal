@@ -1,4 +1,4 @@
--- This file has been generated from package.yaml by hpack version 0.5.4.
+-- This file has been generated from package.yaml by hpack version 0.8.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -16,9 +16,10 @@ executable patches-client
       base
     , transformers
     , http-client
-    , patches-vector
-    , vector
     , string-conversions
+    , crdt-tree-vector
+    , text
+    , unordered-containers
     , aeson
     , servant >= 0.5
     , servant-client >= 0.5
@@ -26,6 +27,7 @@ executable patches-client
     , react-flux
     , ghcjs-base
     , ghcjs-prim
+    , random
     , safe
     , deepseq
   other-modules:

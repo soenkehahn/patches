@@ -1,8 +1,8 @@
-resolver: nightly-2015-11-11
+resolver: nightly-2016-01-01
 packages:
   - '.'
-  - location: /home/shahn/src/wai-shake
-      # git: https://github.com/soenkehahn/wai-shake
+  - location: /home/shahn/src/wai-ghcjs
+      # git: https://github.com/soenkehahn/wai-ghcjs
       # commit: d00ffd7
     extra-dep: true
   - location: /home/shahn/src/servant
@@ -12,6 +12,8 @@ packages:
       - servant
       - servant-server
     extra-dep: true
+  - location: /home/shahn/src/crdt-tree-vector
+    extra-dep: true
 extra-deps:
   - http-api-data-0.1.1.1
-  - patches-vectors-0.1.5.0
+  - patches-vector-0.1.5.0

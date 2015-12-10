@@ -9,24 +9,24 @@
 
 module Main where
 
+import           CRDT.TreeVector as CRDT
 import           Control.Concurrent
 import           Control.DeepSeq
 import           Control.Exception hiding (try)
 import           Control.Monad
 import           Control.Monad.Trans.Except
-import           Data.Patch
+import           Data.List
+import           Data.Monoid
 import           Data.String
-import           Data.Vector (Vector)
-import qualified Data.Vector as V
 import           GHC.Generics
 import           GHCJS.Prim (fromJSString, fromJSInt)
 import           JavaScript.Object
-import           Network.HTTP.Client
 import           React.Flux
 import           Safe
 import           Servant.API hiding (Patch)
 import           Servant.Client
 import           System.IO.Unsafe
+import           System.Random
 
 import           Api
 
@@ -42,15 +42,21 @@ sameOriginBaseUrl path = do
         _ -> error ("unparseable protocol: " ++ js_protocol)
   host <- fromJSString <$> getProp "hostname" location
   js_port <- fromJSString <$> getProp "port" location
-  let port = case readMay js_port of
-        Just p -> p
-        Nothing -> error ("unparseable port: " ++ js_port)
+  let port = case js_port of
+        "" -> case protocol of
+          Http -> 80
+          Https -> 443
+        _ -> case readMay js_port of
+          Just p -> p
+          Nothing -> error ("unparseable port: " ++ js_port)
   return $ BaseUrl protocol host port path
 
 foreign import javascript unsafe "(function () { return location; })()"
   js_location :: IO Object
 
-(getDocument :<|> sendPatch) :<|> _ = unsafePerformIO $ do
+{-# NOINLINE fromServer #-}
+{-# NOINLINE fromClient #-}
+(fromServer :<|> fromClient) :<|> _ = unsafePerformIO $ do
   baseUrl <- sameOriginBaseUrl ""
   return $ client patchesApi baseUrl (error "manager")
 
@@ -58,23 +64,26 @@ foreign import javascript unsafe "(function () { return location; })()"
 
 main :: IO ()
 main = do
-  store <- initStore
-  reactRender "mainDocument" (intView store) ()
+  c <- Client <$> randomRIO (0, 2 ^ 15)
+  alterStore store (SetClient c)
+  reactRender "mainDocument" mainView ()
+  forever $ do
+    update <- try $ fromServer
+    alterStore store $ FromServer update
+    threadDelay 1000000
 
 -- * store
 
 data Store
   = Store {
-    manager :: Manager,
-    text :: Vector Char,
-    lastPatch :: Maybe (Patch Char)
+    c :: CRDT.Client,
+    text :: String,
+    tree :: TreeVector Char
   }
+  deriving (Show)
 
-initStore :: IO (ReactStore Store)
-initStore = do
-  manager <- newManager defaultManagerSettings
-  doc <- try $ getDocument
-  return $ mkStore $ Store manager (V.fromList doc) Nothing
+store :: ReactStore Store
+store = mkStore $ Store (error "uninitialized client") "" mempty
 
 try :: ExceptT ServantError IO a -> IO a
 try action = do
@@ -86,28 +95,36 @@ try action = do
 -- * actions
 
 data Action
-  = SetText String
+  = SetClient CRDT.Client -- fixme: better client setting?
+  | FromServer (TreeVector Char)
+  | FromEditor String
   deriving (Generic)
 
 instance NFData Action
 
 instance StoreData Store where
   type StoreAction Store = Action
-  transform action (Store manager old _) = case action of
-    SetText (V.fromList -> new) -> do
-      let patch = diff old new
-      forkIO $ do
-        reply <- runExceptT $ sendPatch (toList patch)
-        print reply
-      return $ Store manager new (Just patch)
+  transform action (Store client text tree) = case action of
+    SetClient c -> return $ Store c text tree
+    FromEditor t -> do
+      let new = tree <> mkPatch client tree t
+      forkIO $ try $ fromClient new
+      return $ Store client t new
+    FromServer update -> do
+      let newTree = tree <> update
+      return $ Store client (getVector newTree) newTree
 
 -- * view
 
-intView :: ReactStore Store -> ReactView ()
-intView store = defineControllerView "text" store $ \ (Store _ text mPatch) () -> do
+mainView :: ReactView ()
+mainView = defineControllerView "mainView" store $ \ store () -> do
+  view editorView store mempty
+
+editorView :: ReactView Store
+editorView = defineView "editorView" $ \ (Store client text tree) ->
   textarea_ (
-    "value" @= (V.toList text :: String) :
-    onChange (\ event -> [SomeStoreAction store (SetText (target event "value"))]) :
+    "value" @= text :
+    onChange (\ event ->
+      let text = target event "value"
+      in ([SomeStoreAction store (FromEditor text)])) :
     []) mempty
-  p_ $ text_ $ fromString $ show text
-  p_ $ pre_ $ fromString $ show mPatch

@@ -10,9 +10,10 @@ executables:
       - base
       - transformers
       - http-client
-      - patches-vector
-      - vector
       - string-conversions
+      - crdt-tree-vector
+      - text
+      - unordered-containers
       - aeson
       - servant >= 0.5
       - servant-client >= 0.5
@@ -20,5 +21,6 @@ executables:
       - react-flux
       - ghcjs-base
       - ghcjs-prim
+      - random
       - safe
       - deepseq

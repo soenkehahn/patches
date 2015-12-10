@@ -6,14 +6,19 @@ executables:
     dependencies:
       - base
       - wai
-      - wai-shake
+      - wai-ghcjs
       - warp
       - logging-facade
       - servant >= 0.5
       - servant-server >= 0.5
       - getopt-generics
-      - patches-vector
-      - aeson
+      - crdt-tree-vector
+      - aeson >= 0.10
+      - containers
+      - unordered-containers
+      - string-conversions
+      - text
+      - safe
       - either
       - transformers
-      - vector
+      - deepseq

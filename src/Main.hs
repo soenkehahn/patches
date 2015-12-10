@@ -6,15 +6,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ViewPatterns #-}
 
+import           CRDT.TreeVector
 import           Control.Concurrent
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Except
-import           Data.Patch
-import           Data.Vector as V (Vector, toList)
+import           Data.Maybe
+import           Data.Monoid
 import           Network.Wai
+import           Network.Wai.Ghcjs
 import           Network.Wai.Handler.Warp
-import           Network.Wai.Shake.Ghcjs
 import           Servant hiding (Patch)
 import qualified System.Logging.Facade as Log
 import           WithCli
@@ -23,7 +25,6 @@ import           Api
 
 data Options
   = Options {
-    production :: Bool,
     port :: Int
   }
   deriving (Show, Generic, HasArguments)
@@ -35,36 +36,40 @@ main = withCli $ \ options -> do
         setBeforeMainLoop
           (Log.info ("listening on port " ++ show (port options)))
         defaultSettings
-      env = if production options
-        then Production
-        else Development
-  runSettings settings =<< mkApp env
+  runSettings settings =<< mkApp
 
-mkApp :: Environment -> IO Application
-mkApp env = do
-  jsIndexApp <- $(serveGhcjs $ BuildConfig {
+mkApp :: IO Application
+mkApp = do
+  jsIndexApp <- $(serveGhcjs (BuildConfig {
     mainFile = "Main.hs",
     customIndexFile = Just "index.html",
     sourceDirs = [".", "../src"],
     projectDir = "client",
     projectExec = Stack,
     buildDir = "js-builds"
-  }) env
-  mvar <- newMVar mempty
+  }))
+  mvar <- newMVar initialState
   let server :: Server PatchesApi
       server =
-        (document mvar :<|>
-         patch mvar) :<|>
+        (fromServer mvar :<|>
+         fromClient mvar) :<|>
         jsIndexApp
   return $ serve patchesApi server
 
-type DB = MVar (Vector Char)
+type DB = MVar State
 
-document :: DB -> ExceptT ServantErr IO String
-document mvar = liftIO $ (V.toList <$> readMVar mvar)
+data State
+  = State {
+    tree :: TreeVector Char
+  }
 
-patch :: DB -> [Edit Char] -> ExceptT ServantErr IO Message
-patch mvar edits = liftIO $ modifyMVar mvar $ \ document -> do
-  let patch = unsafeFromList edits
-      newDocument = apply patch document
-  return (newDocument, Success $ V.toList newDocument)
+initialState :: State
+initialState = State mempty
+
+fromServer :: MVar State -> ExceptT ServantErr IO (TreeVector Char)
+fromServer mvar = liftIO $ tree <$> readMVar mvar
+
+fromClient :: MVar State -> TreeVector Char -> ExceptT ServantErr IO ()
+fromClient mvar clientTree = liftIO $ modifyMVar_ mvar $ \ (State tree) -> do
+  let new = tree <> clientTree
+  return $ State new
